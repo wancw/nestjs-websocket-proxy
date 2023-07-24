@@ -26,6 +26,7 @@ export class CharRoomGateway
   private clientInfos: Record<string, ClientInfo> = {};
 
   handleConnection(client: Socket): void {
+    console.info('client connected');
     this.broadcast('join', { id: client.id, nickName: client.id });
     this.clientInfos[client.id] = {
       socket: client,
@@ -34,6 +35,7 @@ export class CharRoomGateway
   }
 
   handleDisconnect(client: Socket) {
+    console.info('client disconnected');
     const {
       nickName,
       socket: { id },

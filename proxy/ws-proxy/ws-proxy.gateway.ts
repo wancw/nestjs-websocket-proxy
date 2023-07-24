@@ -1,7 +1,6 @@
 import {
   OnGatewayConnection,
   OnGatewayDisconnect,
-  SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
@@ -26,12 +25,22 @@ export class WsProxyGateway
 
   handleConnection(client: Socket): void {
     console.info('client connected');
+
+    client.onAny((event, ...args: unknown[]) => {
+      console.info('[pre] c -> s: %j', args);
+      this.handleClient(client, event, ...args);
+    });
+
+    // connect to upstream()
     const upstream = io(WS_UPSTREAM);
     this.clientIdToUpstream[client.id] = upstream;
 
     upstream.once('connect', () => {
       this.upstreamIdToClient[upstream.id] = client;
-      this.registerUpstreamHandler(upstream);
+    });
+    upstream.onAny((event, ...args) => {
+      console.info('[pre] s -> c: %j', args);
+      this.handleUpstream(upstream, event, ...args);
     });
   }
 
@@ -49,42 +58,25 @@ export class WsProxyGateway
 
   // Client -> Server events
 
-  @SubscribeMessage('message')
-  async onClientMessage(client: Socket, raw: unknown): Promise<unknown> {
-    return this.handleClient(client, 'message', raw);
-  }
-
-  @SubscribeMessage('changeNickName')
-  async onChangeNickName(client: Socket, raw: unknown): Promise<unknown> {
-    return this.handleClient(client, 'changeNickName', raw);
-  }
-
-  private async handleClient(
+  private handleClient(
     client: Socket,
     event: string,
-    raw: unknown,
-  ): Promise<unknown> {
-    console.info('c -> s: %o: %o', event, raw);
+    ...args: unknown[]
+  ): void {
+    console.info('c -> s: %o: %o', event, args);
     const upstream = this.clientIdToUpstream[client.id];
-    return upstream.emit(event, raw);
+    upstream.emit(event, ...args);
   }
 
   // Server -> Client events
 
-  private registerUpstreamHandler(upstream: ClientSocket) {
-    const events = ['message', 'nickNameChanged'];
-    events.forEach((e) => {
-      upstream.on(e, (raw: unknown) => this.handleUpstream(upstream, e, raw));
-    });
-  }
-
-  private async handleUpstream(
+  private handleUpstream(
     upstream: ClientSocket,
     event: string,
-    raw: unknown,
-  ): Promise<unknown> {
-    console.info('s -> c: %o: %o', event, raw);
+    ...args: unknown[]
+  ): void {
+    console.info('s -> c: %o: %o', event, args);
     const client = this.upstreamIdToClient[upstream.id];
-    return client.emit(event, raw);
+    client.emit(event, ...args);
   }
 }
