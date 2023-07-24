@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "node_modules",
+    "dist",
+    "test",
+    "**/jest.config.ts",
+    "**/*.spec.ts",
+    "mikro-orm.config.ts"
+  ]
+}

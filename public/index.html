@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Web Socket Demo</title>
+    <script src="https://cdn.socket.io/4.3.2/socket.io.min.js"
+            integrity="sha384-KAZ4DtjNhLChOB/hxXuKqhMLYvx3b5MlT55xPEiNmREKRzeEm+RVPlTnAn0ajQNs"
+            crossorigin="anonymous"></script>
+</head>
+<body>
+<div>
+    <h1>WebSocket demo</h1>
+    <div>
+        <p>
+            <label for="nickName">Nick name:</label><input id="nickName" type="text" size="60"/>
+            <button type="submit" onclick="changeNickName();">Change</button>
+        </p>
+        <p>
+            <label for="message">Message:</label><input id="message" type="text" size="60"/>
+            <button type="submit" onclick="sendMessage();">Send</button>
+        </p>
+        <ul id="messages"></ul>
+    </div>
+    <script>
+        const socket = io('ws://localhost:4000/');
+
+        socket.on('connect', function () {
+            console.log('Connected');
+        });
+
+        socket.on('exception', function (data) {
+            console.log('event', data);
+        });
+
+        socket.on('disconnect', function () {
+            console.log('Disconnected');
+        });
+
+        socket.on('join', (payload) => {
+            payload = JSON.parse(payload);
+            console.info('[join] %o', payload);
+            appendLog(`<em>${payload.nickName}</em> joined`);
+        });
+
+        socket.on('leave', (payload) => {
+            payload = JSON.parse(payload);
+            console.info('[leave] %o', payload);
+            appendLog(`<em>${payload.nickName}</em> leaved`);
+        });
+
+        socket.on('message', (payload) => {
+            payload = JSON.parse(payload);
+            console.info('[message] %o', payload);
+            appendLog(`<em><strong>${payload.nickName}</em></strong>: ${payload.message}`);
+        });
+
+        socket.on('nickNameChanged', (payload) => {
+            payload = JSON.parse(payload);
+            console.info('[nickNameChanged] %o', payload);
+            if (socket.id !== payload.id) {
+                appendLog(`<em>${payload.previousNickName}</em> rename to <strong>${payload.nickName}</strong>`);
+            }
+        });
+
+        function changeNickName() {
+            const nickNameInput = document.getElementById('nickName');
+            const nickName = nickNameInput.value;
+            socket.emit('changeNickName', nickName);
+        }
+
+        function sendMessage() {
+            const messageInput = document.getElementById('message');
+            const message = messageInput.value;
+            socket.emit('message', message);
+        }
+
+        function appendLog(newMessage) {
+            const messages = document.getElementById('messages');
+            const entry = document.createElement('li');
+            entry.innerHTML = newMessage;
+            messages.prepend(entry);
+        }
+    </script>
+</div>
+</body>
+</html>
